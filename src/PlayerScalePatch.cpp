@@ -4,32 +4,36 @@
 bool PlayerScalePatch::InstallUpdateHook()
 {
     auto& trampoline = SKSE::GetTrampoline();
-    _OnUpdate        = trampoline.write_call<5>(PlayerScalePatch::On_Update_Hook.address(), OnUpdate);
+    _OnUpdate        = trampoline.write_call<5>(PlayerScalePatch::OnFrame_Update_Hook.address(), OnUpdate);
     logger::info("Installed update hook");
     return true;
 }
 
-std::int32_t PlayerScalePatch::OnUpdate()
+std::int32_t PlayerScalePatch::OnUpdate(std::int64_t a1)
 {
     UpdatePlayerFirstPersonScale();
-    return _OnUpdate();
+    return _OnUpdate(a1);
 }
 
 void PlayerScalePatch::UpdatePlayerFirstPersonScale()
 {
     auto playerCamera = RE::PlayerCamera::GetSingleton();
-    auto ui           = RE::UI::GetSingleton();
+    auto player    = RE::PlayerCharacter::GetSingleton();
+    if (!AreMenusOpen() && player->Is3DLoaded() && playerCamera && playerCamera->IsInFirstPerson()) {
 
-
-    if (playerCamera->IsInFirstPerson() && !ui->GameIsPaused()) {
-        auto player    = RE::PlayerCharacter::GetSingleton();
-
-        auto firstPNode = player->Get3D1(true)->AsNode();
-        auto thirdPNode = player->Get3D1(false)->AsNode();
-
-        if (firstPNode->local.scale != thirdPNode->local.scale) {
-            firstPNode->local.scale = thirdPNode->local.scale;
+        auto firstP3d = player->Get3D(true);
+        auto thirdP3d = player->Get3D(false);
+        if (firstP3d && thirdP3d) {
+            if (firstP3d->local.scale != thirdP3d->local.scale) {
+                firstP3d->local.scale = thirdP3d->local.scale;
+            }
         }
     }
-    
+}
+
+bool PlayerScalePatch::AreMenusOpen()
+{
+    auto ui = RE::UI::GetSingleton();
+
+    return ui->GameIsPaused() || ui->IsMenuOpen("Main Menu") || ui->IsMenuOpen("loading Menu") || ui->IsMenuOpen("MapMenu");
 }
